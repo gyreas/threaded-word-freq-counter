@@ -18,7 +18,7 @@ struct thread_state {
     string chunk_start;
     size_t chunk_size;
 
-    Dict*  dict ;
+    Dict  dict ;
 };
 
 int is_word_boundary_char(char c) {
@@ -49,7 +49,7 @@ string nearest_word_boundary(string buf, size_t offset) {
     return buf;
 }
 
-void count_words_(Dict** dict, char* buf, size_t buflen) {
+void count_words_(Dict* dict, char* buf, size_t buflen) {
     size_t i, wordlen;
     entry  word_ent;
     char   c, *word_start;
@@ -69,7 +69,7 @@ void count_words_(Dict** dict, char* buf, size_t buflen) {
         }
 
         word_ent = entry_newn(word_start, wordlen);
-        Dict_add(*dict, word_ent);
+        Dict_add(dict, word_ent);
 
         word_start = NULL;
     }
@@ -88,11 +88,11 @@ void *count_words(void* args) {
     struct thread_state* tstate;
 
     tstate = (struct thread_state*)args;
-    tdict = tstate->dict;
+    tdict = &tstate->dict;
     chunk_start = tstate->chunk_start;
     chunk_sz = tstate->chunk_size;
 
-    count_words_(&tdict, chunk_start, chunk_sz);
+    count_words_(tdict, chunk_start, chunk_sz);
     return tstate;
 }
 
@@ -136,7 +136,7 @@ int main(int arglen, char* args[])
 {
     FILE*                 fp;
     size_t                bufsz, tnum;
-    Dict*                 big_dict;
+    Dict                  big_dict;
     string                buf, file_path;
     struct thread_state   tstate, tstates[CHUNK_N];
 
@@ -167,10 +167,10 @@ int main(int arglen, char* args[])
     big_dict = Dict_new();
     for (tnum = 0; tnum < CHUNK_N; tnum++) {
         tstate = tstates[tnum];
-        Dict_merge(big_dict, tstate.dict);
+        Dict_merge(&big_dict, &tstate.dict);
         Dict_free(tstate.dict);
     }
-    Dict_print(big_dict);
+    Dict_print(&big_dict);
 
     free(buf);
 

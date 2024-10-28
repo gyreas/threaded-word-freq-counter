@@ -27,11 +27,12 @@ void entry_print(entry ent) {
     printf("{'%s': %lu}\n", ent.word, ent.freq);
 }
 
-Dict* Dict_new() {
-    Dict* dict = (Dict*)malloc(sizeof(Dict));
-    dict->entries = (entry*)malloc(ARRAY_INIT_CAP*sizeof(entry));
-    dict->len = 0;
-    dict->capacity = ARRAY_INIT_CAP;
+Dict Dict_new() {
+    Dict dict;
+
+    dict.entries = (entry*)malloc(ARRAY_INIT_CAP*sizeof(entry));
+    dict.len = 0;
+    dict.capacity = ARRAY_INIT_CAP;
 
     return dict;
 }
@@ -40,13 +41,20 @@ entry Dict_get(Dict* dict, string ent) {
 }
 void Dict_print(Dict* dict) {
     size_t i;
-    printf("[\n");
+
+    printf(
+        "Dict{\n"
+        "  len: %lu\n"
+        "  cap: %lu\n"
+        "  entries:\n",
+        dict->len, dict->capacity
+    );
+
     for (i = 0; i < dict->len; i++) {
-        printf("  ");
+        printf("     ");
         entry_print(dict->entries[i]);
     }
-    printf("]\n");
-
+    printf("}\n");
 }
 int Dict_find(Dict* dict, entry ent) {
     int entlen = strlen(ent.word);
@@ -93,14 +101,12 @@ void Dict_resize(Dict* dict, size_t hint) {
     }
     dict->entries = tmp;
 }
-void Dict_free(Dict* dict) {
-    /**
+void Dict_free(Dict dict) {
     size_t i;
-    for (i = 0; i < dict->len; i++) {
-        free(dict->entries[i].word);
-    } */
-    free(dict->entries);
-    free(dict);
+    for (i = 0; i < dict.len; i++) {
+        free(dict.entries[i].word);
+    }
+    free(dict.entries);
 }
 
 int cmp(const void* a, const void* b) {
@@ -141,30 +147,30 @@ void Dict_insert_many_at(Dict* dict, int *entries, size_t sz, size_t idx) {
 } */
 
 /*
-int main_(void) {
+int main(void) {
     entry ent = entry_new("Saheed");
     entry entS = entry_new("Adeleye");
-    Dict *D = Dict_new();
-    Dict_add(D, ent);
-    Dict_add(D, ent);
-    Dict_add(D, ent);
-    Dict_add(D, ent);
-    Dict_add(D, ent);
+    Dict D = Dict_new();
+    Dict_add(&D, ent);
+    Dict_add(&D, ent);
+    Dict_add(&D, ent);
+    Dict_add(&D, ent);
+    Dict_add(&D, ent);
     printf("D: ");
-    Dict_print(D);
+    Dict_print(&D);
 
-    Dict *A = Dict_new();
-    Dict_add(A, entS);
-    Dict_add(A, entS);
-    Dict_add(A, entS);
+    Dict A = Dict_new();
+    Dict_add(&A, entS);
+    Dict_add(&A, entS);
+    Dict_add(&A, entS);
     printf("A: ");
-    Dict_print(A);
+    Dict_print(&A);
 
-    Dict *B = Dict_new();
-    Dict_merge(B, A);
-    Dict_merge(B, D);
+    Dict B = Dict_new();
+    Dict_merge(&B, &A);
+    Dict_merge(&B, &D);
     printf("B: ");
-    Dict_print(B);
+    Dict_print(&B);
 
     Dict_free(D);
     Dict_free(A);

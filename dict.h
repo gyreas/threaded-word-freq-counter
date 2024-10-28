@@ -23,12 +23,12 @@ typedef struct {
     entry*  entries;
 } Dict;
 
-Dict* Dict_new();
+Dict  Dict_new();
 entry Dict_get(Dict* dict, string);
 int Dict_find(Dict* dict, entry);
 void Dict_add(Dict* dict, entry);
 void Dict_merge(Dict* this_dict, Dict* that_dict);
-void Dict_free(Dict* dict);
+void Dict_free(Dict dict);
 void Dict_resize(Dict* dict, size_t hint);
 void Dict_print(Dict* dict);
 void Dict_sort(Dict* dict);
