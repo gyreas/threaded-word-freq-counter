@@ -20,7 +20,7 @@ entry entry_newn(string, size_t);
 typedef struct {
     size_t len;
     size_t capacity;
-    entry  entries[];
+    entry*  entries;
 } Dict;
 
 Dict* Dict_new();

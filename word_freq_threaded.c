@@ -7,8 +7,12 @@
 
 #include "dict.h"
 
-#define CHUNK_N 5
-#define BOUNDS_CHARS " -_;,.?^()[]{}<>%$@!~`&*+=|'\"\t\r\n\\"
+#ifndef CHUNK_N
+  #define CHUNK_N 4
+#endif
+
+#define BOUNDS_CHARS " -_:;,.?^()[]{}<>%$@!~`&*+=|'\"\t\r\n\\"
+#define WORD_CHARS "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 struct thread_state {
     string chunk_start;
@@ -18,13 +22,15 @@ struct thread_state {
 };
 
 int is_word_boundary_char(char c) {
-    size_t i;
-    for (i = 0; i < strlen(BOUNDS_CHARS); i++) {
-        if (c == BOUNDS_CHARS[i]) {
-            return 1;
-        }
-    }
-    return 0;
+    char* idx = strchr(BOUNDS_CHARS, c);
+
+    return idx != NULL;
+}
+
+int is_word_char(char c) {
+    char* idx = strchr(WORD_CHARS, c);
+
+    return idx != NULL;
 }
 
 /** Determine the nearest point backward that marks a word */
@@ -36,13 +42,37 @@ string nearest_word_boundary(string buf, size_t offset) {
     /* we're sitting on an alphabetic character */
     /* so the word it's a part of is incomplete, backtack */
     for (i = offset; i != -1; i--) {
-        if (is_word_boundary_char(buf[i])) {
-            if (i > 0 && isalpha(buf[i-1])) {
-                return buf + i;
-            }
+        if (is_word_boundary_char(buf[i]) && i > 0 && isalpha(buf[i-1])) {
+            return buf + i;
         }
     }
     return buf;
+}
+
+void count_words_(Dict** dict, char* buf, size_t buflen) {
+    size_t i, wordlen;
+    entry  word_ent;
+    char   c, *word_start;
+
+    word_start = NULL;
+    for (i = 0; i < buflen; i++) {
+        c = buf[i];
+
+        if (!isalpha(c)) continue;
+
+        /* read it as a word */
+        word_start = buf + i;
+        wordlen = 1; /* include the current char */
+        while (i + 1 < buflen && is_word_char(buf[i+1])) {
+            i++;
+            wordlen++;
+        }
+
+        word_ent = entry_newn(word_start, wordlen);
+        Dict_add(*dict, word_ent);
+
+        word_start = NULL;
+    }
 }
 
 /*
@@ -52,10 +82,8 @@ string nearest_word_boundary(string buf, size_t offset) {
  * 
  */
 void *count_words(void* args) {
-    char                 c;
-    size_t               i, wordlen, chunk_sz;
-    entry                word_ent;
-    string               word_start, chunk_start;
+    size_t               chunk_sz;
+    string               chunk_start;
     Dict*                tdict;
     struct thread_state* tstate;
 
@@ -63,33 +91,13 @@ void *count_words(void* args) {
     tdict = tstate->dict;
     chunk_start = tstate->chunk_start;
     chunk_sz = tstate->chunk_size;
-    word_start = NULL;
 
-    for (i = 0; i < chunk_sz; i++) {
-        c = chunk_start[i];
-
-        if (!isalpha(c)) continue;
-
-        /* read it as a word */
-        word_start = chunk_start + i;
-        wordlen = 1; /* include the current char */
-        while (i + 1 < chunk_sz && !is_word_boundary_char(chunk_start[i+1])) {
-            i++;
-            wordlen++;
-        }
-
-        word_ent = entry_newn(word_start, wordlen);
-        Dict_add(tdict, word_ent);
-
-        word_start = NULL;
-    }
-
+    count_words_(&tdict, chunk_start, chunk_sz);
     return tstate;
 }
 
 void threaded_freq(struct thread_state* tstates, string buf, size_t bufsz) {
     int                   s;
-    Dict*                 dict;
     size_t                tnum, offset, chunk_sz, CHUNK_SZ_APPROX;
     pthread_t             threads[CHUNK_N];
 
@@ -124,17 +132,23 @@ void threaded_freq(struct thread_state* tstates, string buf, size_t bufsz) {
     }
 }
 
-int main(void)
+int main(int arglen, char* args[])
 {
-    int                   s;
     FILE*                 fp;
     size_t                bufsz, tnum;
-    string                buf;
+    Dict*                 big_dict;
+    string                buf, file_path;
     struct thread_state   tstate, tstates[CHUNK_N];
 
-    fp = fopen("word_freq_threaded.c", "r");
+    if (arglen == 1) {
+        fprintf(stderr, "usage: ./wft <textfile>\n");
+        exit(1);
+    }
+
+    file_path = args[1];
+    fp = fopen(file_path, "r");
     if (!fp) {
-        fprintf(stderr, "WTF!!\n");
+        fprintf(stderr, "open: could not open file: %s\n", file_path);
         exit(1);
     }
 
@@ -150,11 +164,9 @@ int main(void)
 
     threaded_freq(tstates, buf, bufsz);
 
-    Dict* big_dict = Dict_new();
+    big_dict = Dict_new();
     for (tnum = 0; tnum < CHUNK_N; tnum++) {
         tstate = tstates[tnum];
-        printf("Results from thread%d:\n", tnum);
-        /* Dict_print(tstate.dict); */
         Dict_merge(big_dict, tstate.dict);
         Dict_free(tstate.dict);
     }

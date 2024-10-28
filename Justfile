@@ -1,7 +1,7 @@
 default: wft
 
 wft:
-    c89 -ggdb -o wft word_freq_threaded.c dict.c dict.h
+    c89 -ggdb -Wall -Wpedantic -Werror -o wft word_freq_threaded.c dict.c dict.h
     ./wft
 
 dict:

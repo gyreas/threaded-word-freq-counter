@@ -24,12 +24,12 @@ entry entry_newn(string word, size_t len) {
     return e;
 }
 void entry_print(entry ent) {
-    printf("{'%s': %zu}\n", ent.word, ent.freq);
+    printf("{'%s': %lu}\n", ent.word, ent.freq);
 }
 
 Dict* Dict_new() {
-    Dict* dict = (Dict*)malloc(sizeof(Dict) * ARRAY_INIT_CAP*sizeof(entry));
-
+    Dict* dict = (Dict*)malloc(sizeof(Dict));
+    dict->entries = (entry*)malloc(ARRAY_INIT_CAP*sizeof(entry));
     dict->len = 0;
     dict->capacity = ARRAY_INIT_CAP;
 
@@ -39,8 +39,8 @@ entry Dict_get(Dict* dict, string ent) {
     return dict->entries[0];
 }
 void Dict_print(Dict* dict) {
-    printf("[\n");
     size_t i;
+    printf("[\n");
     for (i = 0; i < dict->len; i++) {
         printf("  ");
         entry_print(dict->entries[i]);
@@ -63,11 +63,10 @@ int Dict_find(Dict* dict, entry ent) {
 void Dict_add(Dict* dict, entry ent) {
     int idx = Dict_find(dict, ent);
     if (idx ==  -1) {
-        printf("adding new a entry: '%s'\n", ent.word);
         Dict_resize(dict, 0);
-        dict->entries[dict->len++] = ent;
+        dict->entries[dict->len] = ent;
+        dict->len++;
     } else {
-        printf("found entry: '%s'\n", ent.word);
         dict->entries[idx].freq++;
     }
 }
@@ -83,16 +82,24 @@ void Dict_merge(Dict* this, Dict* that) {
 }
 /** `hint` of 0 means use default */
 void Dict_resize(Dict* dict, size_t hint) {
-    if (dict->len + hint >= dict->capacity) {
-        dict->capacity += (hint == 0) ? dict->capacity : dict->len + hint;
-        dict = realloc(dict, dict->capacity * sizeof(entry));
+    entry* tmp;
+
+    if (dict->len + hint < dict->capacity) return;
+
+    dict->capacity += (hint == 0) ? dict->capacity : dict->len + hint;
+    tmp = realloc(dict->entries, dict->capacity * sizeof(entry));
+    if (tmp == NULL) {
+        fprintf(stderr, "realloc: not enough memory\n");
     }
+    dict->entries = tmp;
 }
 void Dict_free(Dict* dict) {
+    /**
     size_t i;
     for (i = 0; i < dict->len; i++) {
         free(dict->entries[i].word);
-    }
+    } */
+    free(dict->entries);
     free(dict);
 }
 
@@ -133,6 +140,7 @@ void Dict_insert_many_at(Dict* dict, int *entries, size_t sz, size_t idx) {
 
 } */
 
+/*
 int main_(void) {
     entry ent = entry_new("Saheed");
     entry entS = entry_new("Adeleye");
@@ -162,4 +170,4 @@ int main_(void) {
     Dict_free(A);
     Dict_free(B);
 }
-
+*/
